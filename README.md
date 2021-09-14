@@ -1,7 +1,7 @@
 # Gesture
 A desktop UI overlay to enable typing functionality with the Gesture remote
 
-The Guesture remote is a 3 axis gyroscopic mouse with scrolling functionality.
+The Gesture remote is a 3 axis gyroscopic mouse with scrolling functionality (which I am developing).
 
 The purpose of this project is to create an app so that one may type using the Gesture remote (think on screen keyboard).
 
