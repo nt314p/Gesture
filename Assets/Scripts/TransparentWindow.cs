@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class TransparentWindow : MonoBehaviour
 {
@@ -50,6 +51,8 @@ public class TransparentWindow : MonoBehaviour
     private const int WS_EX_LAYERED = 0x00080000;
     private const int WS_EX_TRANSPARENT = 0x00000020;
 
+    private readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
+
     private const int SWP_FRAMECHANGED = 0x020;
     private const int SWP_SHOWWINDOW = 0x040;
 
@@ -57,17 +60,14 @@ public class TransparentWindow : MonoBehaviour
     private const int LWA_ALPHA = 0x00000002;
     
     private IntPtr handle;
+
+    [SerializeField] private Camera mainCamera;
     
-    // Start is called before the first frame update
     private void Start()
     {
-        handle = GetActiveWindow();
-
-        Debug.Log(handle);
-
-        var margins = new MARGINS { cxLeftWidth = -1 };
-        DwmExtendFrameIntoClientArea(handle, ref margins);
-
+#if !UNITY_EDITOR
+        InitializeTransparentWindow();
+#endif
         // IntPtr stylePtr = GetWindowLongPtr(handle, GWL_STYLE);
         // long styleLong = stylePtr.ToInt64();
         //
@@ -84,9 +84,32 @@ public class TransparentWindow : MonoBehaviour
         // SetWindowPos(handle, IntPtr.Zero, 0, 0, fWidth, fHeight, SWP_FRAMECHANGED | SWP_SHOWWINDOW);
     }
 
-    // Update is called once per frame
-    void Update()
+    private void InitializeTransparentWindow()
     {
-        
+        handle = GetActiveWindow();
+        var margins = new MARGINS { cxLeftWidth = -1 };
+        DwmExtendFrameIntoClientArea(handle, ref margins);
+
+        SetWindowLongPtr(handle, GWL_EXSTYLE, new IntPtr(WS_EX_LAYERED | WS_EX_TRANSPARENT));
+        SetWindowPos(handle, HWND_TOPMOST, 0, 0, 0, 0, 0);
     }
+    
+    private void Update()
+    {
+        var worldMouseCoords = mainCamera.ScreenToWorldPoint(Input.mousePosition);
+        var collider2d = Physics2D.OverlapPoint(worldMouseCoords);
+        var hover = collider2d != null;
+#if !UNITY_EDITOR
+        SetClickThrough(!hover);
+#endif
+    }
+
+    private void SetClickThrough(bool isClickThrough)
+    {
+        var style = WS_EX_LAYERED;
+        if (isClickThrough) style |= WS_EX_TRANSPARENT;
+        SetWindowLongPtr(handle, GWL_EXSTYLE, new IntPtr(style));
+    }
+    
+    
 }
