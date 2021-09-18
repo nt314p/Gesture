@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
+using TMPro;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
 public class TransparentWindow : MonoBehaviour
 {
@@ -50,6 +50,8 @@ public class TransparentWindow : MonoBehaviour
     
     private const int WS_EX_LAYERED = 0x00080000;
     private const int WS_EX_TRANSPARENT = 0x00000020;
+    private const int WS_EX_APPWINDOW = 0x00040000;
+    private const int WS_EX_TOOLWINDOW = 0x00000080;
 
     private readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
 
@@ -61,13 +63,23 @@ public class TransparentWindow : MonoBehaviour
     
     private IntPtr handle;
 
+    public TextMeshProUGUI log;
+
     [SerializeField] private Camera mainCamera;
     
     private void Start()
     {
+        var styleLong = GetWindowLongPtr(handle, GWL_EXSTYLE).ToInt64();
+        var m = Convert.ToString(styleLong, 2);
+        log.text = m;
+
 #if !UNITY_EDITOR
         InitializeTransparentWindow();
 #endif
+        
+        styleLong = GetWindowLongPtr(handle, GWL_EXSTYLE).ToInt64();
+        m = Convert.ToString(styleLong, 2);
+        log.text += '\n' + m;
         // IntPtr stylePtr = GetWindowLongPtr(handle, GWL_STYLE);
         // long styleLong = stylePtr.ToInt64();
         //
@@ -79,8 +91,7 @@ public class TransparentWindow : MonoBehaviour
         //
         // SetLayeredWindowAttributes(handle, 0, 0, LWA_ALPHA);
         //
-        // int fWidth = Screen.width;
-        // int fHeight = Screen.height;
+        // 
         // SetWindowPos(handle, IntPtr.Zero, 0, 0, fWidth, fHeight, SWP_FRAMECHANGED | SWP_SHOWWINDOW);
     }
 
@@ -90,8 +101,21 @@ public class TransparentWindow : MonoBehaviour
         var margins = new MARGINS { cxLeftWidth = -1 };
         DwmExtendFrameIntoClientArea(handle, ref margins);
 
-        SetWindowLongPtr(handle, GWL_EXSTYLE, new IntPtr(WS_EX_LAYERED | WS_EX_TRANSPARENT));
-        SetWindowPos(handle, HWND_TOPMOST, 0, 0, 0, 0, 0);
+        var exStyleLong = GetWindowLongPtr(handle, GWL_EXSTYLE).ToInt64();
+        exStyleLong &= ~WS_EX_APPWINDOW;
+        exStyleLong |= WS_EX_TRANSPARENT | WS_EX_LAYERED | WS_EX_TOOLWINDOW;
+
+        var styleLong = GetWindowLongPtr(handle, GWL_STYLE).ToInt64();
+        styleLong &= ~(WS_CAPTION | WS_HSCROLL | WS_VSCROLL | WS_SYSMENU);
+        styleLong &= WS_MAXIMIZE;
+        
+        SetWindowLongPtr(handle, GWL_STYLE, new IntPtr(styleLong));
+        SetWindowLongPtr(handle, GWL_EXSTYLE, new IntPtr(exStyleLong));
+
+        var fWidth = Screen.width;
+        var fHeight = Screen.height;
+        
+        SetWindowPos(handle, HWND_TOPMOST, 0, 0, fWidth, fHeight, SWP_SHOWWINDOW);
     }
     
     private void Update()
@@ -106,10 +130,15 @@ public class TransparentWindow : MonoBehaviour
 
     private void SetClickThrough(bool isClickThrough)
     {
-        var style = WS_EX_LAYERED;
-        if (isClickThrough) style |= WS_EX_TRANSPARENT;
+        var style = GetWindowLongPtr(handle, GWL_EXSTYLE).ToInt64();
+        if (isClickThrough)
+        {
+            style |= WS_EX_TRANSPARENT;
+        }
+        else
+        {
+            style &= ~WS_EX_TRANSPARENT;
+        }
         SetWindowLongPtr(handle, GWL_EXSTYLE, new IntPtr(style));
     }
-    
-    
 }
